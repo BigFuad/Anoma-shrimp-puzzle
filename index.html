@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>GARAPON Puzzle — Easy · Medium · Hard</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0f12;
+    --card:#141821;
+    --card-2:#0f1218;
+    --text:#e7ebf3;
+    --muted:#93a0b4;
+    --accent:#ff3b30;
+    --accent-2:#ff9f0a;
+    --glass:rgba(255,255,255,.06);
+    --success:#22c55e;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:radial-gradient(1200px 700px at 10% 0%, #1a2030 0%, #0b0e14 60%, #07090e 100%);
+    color:var(--text); font-family:Inter,system-ui,ui-sans-serif,Segoe UI,Roboto,Helvetica,Arial;
+    display:flex; align-items:center; justify-content:center; padding:18px;
+  }
+  .wrap{
+    width:min(1200px,96vw); display:grid; gap:18px;
+    grid-template-columns: 1.15fr .85fr;
+  }
+  @media (max-width:1000px){ .wrap{grid-template-columns:1fr; margin-top:12px} }
+  .panel{
+    background:linear-gradient(180deg,var(--card),var(--card-2));
+    border:1px solid #1b2331; border-radius:16px; padding:14px; box-shadow:0 10px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px}
+  .title{
+    font-weight:900; letter-spacing:.5px; font-size:22px; display:flex; align-items:center; gap:10px;
+  }
+  .badge{font-size:11px; padding:4px 10px; border-radius:999px; background:linear-gradient(90deg,var(--accent),#ff5e57); box-shadow:0 6px 18px rgba(255,59,48,.2)}
+  .sub{color:var(--muted); font-size:13px}
+  .grid{
+    position:relative; width:100%; aspect-ratio:1/1; border-radius:12px; overflow:hidden;
+    background:#0b0e14;
+    border:1px solid #1b2331;
+    touch-action:none;
+  }
+  canvas{width:100%; height:100%; display:block; image-rendering:crisp-edges; image-rendering:pixelated}
+  .controls{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+  .controls .row{grid-column:1/-1; display:flex; gap:8px; flex-wrap:wrap}
+  .btn{
+    appearance:none; border:0; border-radius:10px; padding:10px 12px; font-weight:700; letter-spacing:.2px;
+    background:linear-gradient(180deg,#1c2432,#141b26); color:var(--text); cursor:pointer;
+    box-shadow:0 0 0 1px #1b2331 inset, 0 6px 20px rgba(0,0,0,.25);
+    transition:transform .08s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .btn:hover{filter:brightness(1.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:linear-gradient(180deg,var(--accent),#d92b22); box-shadow:0 0 0 1px #ff6a61 inset, 0 10px 24px rgba(255,59,48,.2); color:#fff}
+  .btn.secondary{background:linear-gradient(180deg,#263149,#1a2233)}
+  .btn.good{background:linear-gradient(180deg,#2ed573,#1faf55)}
+  .btn.warn{background:linear-gradient(180deg,#ffb300,#e89000)}
+  .seg{
+    display:flex; align-items:center; background:linear-gradient(180deg,#161b25,#121722); border-radius:10px; padding:6px; gap:6px; border:1px solid #1b2331;
+  }
+  .seg > button{
+    flex:1; padding:8px 10px; background:transparent; border:0; border-radius:8px; color:var(--muted);
+    font-weight:700; cursor:pointer;
+  }
+  .seg > button.active{background:rgba(255,255,255,.04); color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}
+  .stat{
+    display:flex; align-items:center; gap:10px; background:linear-gradient(180deg,#121722,#0d121b);
+    padding:10px 12px; border-radius:10px; border:1px solid #1b2331; font-weight:700; justify-content:space-between;
+  }
+  .stat .big{font-size:18px}
+  .hint{
+    position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .25s ease;
+    border-radius:12px; overflow:hidden; outline:2px dashed rgba(255,255,255,.04); outline-offset:-6px
+  }
+  .hint.show{opacity:.95}
+  .imgfill{width:100%; height:100%; object-fit:cover}
+  .side{
+    display:grid; gap:12px; grid-auto-rows:min-content;
+  }
+  .note{font-size:12px; color:var(--muted)}
+  .footer{
+    color:var(--muted); text-align:center; font-size:12px; margin-top:6px
+  }
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:#091017; color:#eafff2;
+    border:1px solid #1b2a22; border-radius:10px; padding:10px 14px; font-weight:700; display:none;
+    box-shadow:0 12px 28px rgba(0,0,0,.45)
+  }
+  .toast.show{display:block; animation:fade 2.2s ease 1}
+  @keyframes fade{0%{opacity:0; transform:translate(-50%,10px)} 10%,80%{opacity:1; transform:translate(-50%,0)} 100%{opacity:0; transform:translate(-50%,10px)}}
+  .confetti{position:fixed; inset:0; pointer-events:none}
+  .small{font-size:11px; color:var(--muted)}
+  .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:#0f1420; border:1px solid #1b2331; padding:2px 6px; border-radius:6px; font-size:12px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <div class="head">
+        <div class="title">🧩 GARAPON Puzzle <span class="badge">Daily Spin</span></div>
+        <button id="shuffleBtn" class="btn primary">Shuffle &amp; Start</button>
+      </div>
+      <div class="sub" style="margin-bottom:12px">
+        Tap tiles or swipe on a tile to move. Press H for hint, R to reshuffle.
+      </div>
+      <div class="grid" id="board">
+        <canvas id="puzzle"></canvas>
+        <div class="hint" id="hint"><img id="hintImg" class="imgfill" alt="hint"></div>
+      </div>
+      <div class="footer">
+        <span class="small">Play on desktop (click tiles / arrow keys) or mobile (swipe tiles).</span>
+      </div>
+    </section>
+
+    <aside class="panel side">
+      <div class="stat">
+        <div>⏱️ Time</div><div class="big" id="time">00:00</div>
+      </div>
+      <div class="stat">
+        <div>🧮 Moves</div><div class="big" id="moves">0</div>
+      </div>
+
+      <div class="seg" role="group" aria-label="difficulty">
+        <button data-size="3" class="active">Easy 3×3</button>
+        <button data-size="4">Medium 4×4</button>
+        <button data-size="6">Hard 6×6</button>
+      </div>
+
+      <div class="row">
+        <button id="hintBtn" class="btn secondary">👀 Toggle Hint</button>
+        <button id="undoBtn" class="btn">↶ Undo</button>
+        <button id="redoBtn" class="btn">↷ Redo</button>
+      </div>
+
+      <div class="controls">
+        <button id="soundBtn" class="btn">🔈 Sound: On</button>
+        <button id="bestBtn" class="btn good">🏆 Best Times</button>
+      </div>
+
+      <div class="note" style="margin-top:6px">
+        Pro tip: You can press <span class="kbd">H</span> for hint, <span class="kbd">R</span> to reshuffle, and use arrow keys or swipes.
+      </div>
+    </aside>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <canvas id="confetti" class="confetti"></canvas>
+
+<script>
+/* ======= Sliding puzzle with safe shuffle & mobile swipe on tiles ======= */
+const imgSrc = "garapon.png"; // keep garapon.png next to index.html
+const canvas = document.getElementById('puzzle');
+const ctx = canvas.getContext('2d');
+const hint = document.getElementById('hint');
+const hintImg = document.getElementById('hintImg');
+const timeEl = document.getElementById('time');
+const movesEl = document.getElementById('moves');
+const toast = document.getElementById('toast');
+
+const segButtons = [...document.querySelectorAll('.seg > button')];
+const shuffleBtn = document.getElementById('shuffleBtn');
+const hintBtn = document.getElementById('hintBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+const bestBtn = document.getElementById('bestBtn');
+const soundBtn = document.getElementById('soundBtn');
+
+let N = 3;
+let tiles = [];
+let blank = 0;
+let size = 600;
+let img = new Image();
+let started = false;
+let timer = 0, interval = null;
+let moves = 0;
+let history = [], redoStack = [];
+let soundOn = true;
+
+// responsive canvas
+function fitCanvas(){
+  const board = document.getElementById('board').getBoundingClientRect();
+  const s = Math.floor(Math.min(board.width, board.height));
+  size = s; canvas.width = canvas.height = s;
+  draw();
+}
+window.addEventListener('resize', fitCanvas);
+
+// load image (fallback placeholder if missing)
+function loadImage(src){ return new Promise((resolve,reject)=>{
+  const im = new Image();
+  im.onload = ()=>resolve(im);
+  im.onerror = reject;
+  im.src = src;
+}); }
+
+(async function init(){
+  try{
+    img = await loadImage(imgSrc);
+  }catch(e){
+    // placeholder canvas image
+    const c = document.createElement('canvas');
+    c.width = c.height = 1024;
+    const cc = c.getContext('2d');
+    const g = cc.createLinearGradient(0,0,1024,1024);
+    g.addColorStop(0,'#ffe29f'); g.addColorStop(.5,'#ff7a7a'); g.addColorStop(1,'#ff6f91');
+    cc.fillStyle = g; cc.fillRect(0,0,1024,1024);
+    cc.fillStyle = "rgba(0,0,0,0.06)"; cc.font="120px Inter"; cc.fillText("GARAPON",60,180);
+    img = c;
+    showToast("garapon.png not found — using placeholder.");
+  }
+  hintImg.src = (img instanceof HTMLImageElement) ? img.src : img.toDataURL();
+  setDifficulty(3);
+  fitCanvas();
+})();
+
+// helpers
+function indexToRC(i){ return { r: Math.floor(i / N), c: i % N }; }
+function rcToIndex(r,c){ return r*N + c; }
+function neighbors(i){
+  const {r,c} = indexToRC(i);
+  const out=[];
+  if(r>0) out.push(rcToIndex(r-1,c));
+  if(r<N-1) out.push(rcToIndex(r+1,c));
+  if(c>0) out.push(rcToIndex(r,c-1));
+  if(c<N-1) out.push(rcToIndex(r,c+1));
+  return out;
+}
+function drawSlice(sr, sc, dc, dr, s){
+  const iw = img.width, ih = img.height;
+  const srcW = iw / N, srcH = ih / N;
+  ctx.drawImage(img, sc*srcW, sr*srcH, srcW, srcH, dc*s, dr*s, s, s);
+}
+function draw(){
+  if(!canvas.width) return;
+  const s = size / N;
+  ctx.clearRect(0,0,size,size);
+  for(let idx=0; idx<tiles.length; idx++){
+    const t = tiles[idx];
+    if(t===0) continue; // blank
+    const {r:dr,c:dc} = indexToRC(idx);
+    const {r:sr,c:sc} = indexToRC(t);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(dc*s, dr*s, s, s);
+    ctx.clip();
+    drawSlice(sr, sc, dc, dr, s);
+    ctx.restore();
+    // subtle borders
+    ctx.strokeStyle = "rgba(255,255,255,.04)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(dc*s+.5, dr*s+.5, s-1, s-1);
+  }
+}
+
+// game state builders & checks
+function buildSolved(){
+  tiles = Array.from({length:N*N}, (_,i)=>i);
+  blank = 0;
+}
+function isSolved(){
+  for(let i=0;i<tiles.length;i++) if(tiles[i]!==i) return false;
+  return true;
+}
+function doSwap(i, record){
+  // swap tile i with blank (no adjacency check here)
+  [tiles[i], tiles[blank]] = [tiles[blank], tiles[i]];
+  blank = i;
+  if(record){
+    history.push(i); redoStack.length = 0; moves++;
+  }
+}
+
+// move with adjacency check (user moves)
+function moveTile(i, record=true){
+  if(!started && record) return;
+  if(i<0 || i>=tiles.length) return;
+  const n = neighbors(i);
+  if(!n.includes(blank)) return;
+  doSwap(i, record);
+  draw();
+  renderHUD();
+  if(record && soundOn) playClick();
+  if(isSolved()){
+    started = false; clearInterval(interval);
+    celebrate();
+    saveBest();
+  }
+}
+
+// shuffle: perform many legal random moves from solved to guarantee solvable state.
+// ensure not solvable in 1 move by checking and adding more moves if needed.
+function shuffle(){
+  buildSolved();
+  // perform legal random moves
+  const minMoves = Math.max(40, N*N*10); // ensure substantial scramble
+  let last = null;
+  for(let i=0;i<minMoves;i++){
+    const nbrs = neighbors(blank).filter(x => x !== last); // avoid immediate backtracking
+    const choice = nbrs[Math.floor(Math.random()*nbrs.length)];
+    doSwap(choice, false);
+    last = blank; // last will be previous blank (after swap blank updated)
+  }
+  // Additional randomness
+  for(let i=0;i<15;i++){
+    const nbrs = neighbors(blank);
+    const choice = nbrs[Math.floor(Math.random()*nbrs.length)];
+    doSwap(choice, false);
+  }
+  // If the shuffle accidentally equals solved (extremely unlikely) or is solvable in one move, extend shuffle
+  let attempts = 0;
+  while((isSolved() || isOneMoveAway()) && attempts < 50){
+    const nbrs = neighbors(blank);
+    const choice = nbrs[Math.floor(Math.random()*nbrs.length)];
+    doSwap(choice, false);
+    attempts++;
+  }
+
+  started = true;
+  history = []; redoStack = []; moves = 0;
+  resetTimer(); startTimer();
+  draw(); renderHUD();
+}
+
+// Check if puzzle is solvable in one move (i.e., swapping any neighbor of blank makes it solved)
+function isOneMoveAway(){
+  const solved = Array.from({length:N*N},(_,i)=>i);
+  const nbrs = neighbors(blank);
+  for(const n of nbrs){
+    // simulate swap n <-> blank
+    const copy = tiles.slice();
+    [copy[n], copy[blank]] = [copy[blank], copy[n]];
+    let ok = true;
+    for(let i=0;i<copy.length;i++){
+      if(copy[i] !== i){ ok = false; break; }
+    }
+    if(ok) return true;
+  }
+  return false;
+}
+
+// timer & HUD
+function startTimer(){
+  clearInterval(interval);
+  timer = 0; interval = setInterval(()=>{timer++; renderHUD();}, 1000);
+}
+function resetTimer(){ clearInterval(interval); interval = null; timer = 0; renderHUD(); }
+function formatTime(sec){
+  const m = String(Math.floor(sec/60)).padStart(2,'0');
+  const s = String(sec%60).padStart(2,'0');
+  return `${m}:${s}`;
+}
+function renderHUD(){
+  timeEl.textContent = formatTime(timer);
+  movesEl.textContent = moves;
+}
+function showToast(msg){
+  toast.textContent = msg; toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 2200);
+}
+
+// audio feedback
+function playClick(){
+  if(!soundOn) return;
+  try{
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = 'sine'; o.frequency.value = 520;
+    g.gain.setValueAtTime(0.06, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+0.06);
+    o.start(); o.stop(ac.currentTime+0.07);
+  }catch(e){}
+}
+
+// undo/redo
+function undo(){
+  if(history.length===0) return;
+  const last = history.pop();
+  redoStack.push(last);
+  // To undo: swap the tile at 'last' with blank (they are adjacent in recording)
+  // moveTile would increment moves - so call doSwap directly
+  doSwap(last, false);
+  moves = Math.max(0, moves-1);
+  draw(); renderHUD();
+}
+function redo(){
+  if(redoStack.length===0) return;
+  const i = redoStack.pop();
+  history.push(i);
+  doSwap(i, false);
+  moves++; draw(); renderHUD();
+}
+
+// best time storage
+function saveBest(){
+  const key = `best_${N}`;
+  const prev = JSON.parse(localStorage.getItem(key) || 'null');
+  const rec = { time: timer, moves };
+  if(!prev || timer < prev.time){
+    localStorage.setItem(key, JSON.stringify(rec));
+  }
+}
+function showBest(){
+  const e = JSON.parse(localStorage.getItem('best_3')||'null');
+  const m = JSON.parse(localStorage.getItem('best_4')||'null');
+  const h = JSON.parse(localStorage.getItem('best_6')||'null');
+  const fmt = r=> r? `${formatTime(r.time)} · ${r.moves} moves` : '—';
+  alert(`🏆 Best Times\n\nEasy (3×3):  ${fmt(e)}\nMedium (4×4): ${fmt(m)}\nHard (6×6):   ${fmt(h)}`);
+}
+
+// win confetti
+const conf = document.getElementById('confetti');
+const cctx = conf.getContext('2d');
+function confettiBurst(){
+  conf.width = innerWidth; conf.height = innerHeight;
+  const parts = Array.from({length:100}, ()=>({
+    x: Math.random()*conf.width,
+    y: conf.height + Math.random()*80,
+    vx: (Math.random()-.5)*6,
+    vy: -(2+Math.random()*6),
+    s: 2 + Math.random()*4,
+    a: 1,
+    col: ['#ff3b30','#ffd60a','#34d399','#60a5fa','#f472b6'][Math.floor(Math.random()*5)]
+  }));
+  let t = 0;
+  function tick(){
+    cctx.clearRect(0,0,conf.width,conf.height);
+    for(const p of parts){
+      p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.a -= 0.01;
+      cctx.globalAlpha = Math.max(0,p.a);
+      cctx.fillStyle = p.col;
+      cctx.fillRect(p.x,p.y,p.s,p.s*1.6);
+    }
+    cctx.globalAlpha=1;
+    if(t++<220) requestAnimationFrame(tick); else cctx.clearRect(0,0,conf.width,conf.height);
+  }
+  tick();
+}
+function celebrate(){
+  showToast(`Solved in ${formatTime(timer)} with ${moves} moves!`);
+  confettiBurst();
+}
+
+// click handling (desktop)
+canvas.addEventListener('click', e=>{
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const s = size / N;
+  const c = Math.floor(x / s), r = Math.floor(y / s);
+  const i = rcToIndex(r,c);
+  moveTile(i);
+});
+
+// keyboard
+window.addEventListener('keydown', e=>{
+  // prevent default when using arrows
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','h','H','r','R','u','U','y','Y'].includes(e.key)) e.preventDefault();
+  if(e.key==='ArrowLeft'){ const {r,c}=indexToRC(blank); if(c<N-1) moveTile(rcToIndex(r,c+1)); }
+  if(e.key==='ArrowRight'){ const {r,c}=indexToRC(blank); if(c>0) moveTile(rcToIndex(r,c-1)); }
+  if(e.key==='ArrowUp'){ const {r,c}=indexToRC(blank); if(r<N-1) moveTile(rcToIndex(r+1,c)); }
+  if(e.key==='ArrowDown'){ const {r,c}=indexToRC(blank); if(r>0) moveTile(rcToIndex(r-1,c)); }
+  if(e.key==='h' || e.key==='H') toggleHint();
+  if(e.key==='r' || e.key==='R') shuffle();
+  if(e.key==='u' || e.key==='U') undo();
+  if(e.key==='y' || e.key==='Y') redo();
+});
+
+// difficulty buttons
+segButtons.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    segButtons.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    setDifficulty(parseInt(btn.dataset.size,10));
+  });
+});
+function setDifficulty(n){
+  N = n; buildSolved(); blank = 0; moves=0; history=[]; redoStack=[];
+  resetTimer(); draw(); fitCanvas();
+}
+
+// hint toggle
+hintBtn.addEventListener('click', toggleHint);
+function toggleHint(){ hint.classList.toggle('show'); }
+
+// undo/redo buttons
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+
+// shuffle button
+shuffleBtn.addEventListener('click', shuffle);
+
+// best and sound
+bestBtn.addEventListener('click', showBest);
+soundBtn.addEventListener('click', ()=>{
+  soundOn = !soundOn; soundBtn.textContent = (soundOn ? '🔈 Sound: On' : '🔇 Sound: Off');
+});
+
+// timer helpers
+function startTimer(){
+  clearInterval(interval);
+  timer = 0; interval = setInterval(()=>{ timer++; renderHUD(); }, 1000);
+}
+function resetTimer(){ clearInterval(interval); interval = null; timer = 0; renderHUD(); }
+
+// touch/swipe on tiles (mobile-friendly):
+let touchStartX = 0, touchStartY = 0, touchStartTile = null, touchActive = false;
+canvas.addEventListener('touchstart', (ev)=>{
+  ev.preventDefault();
+  const t = ev.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  const x = t.clientX - rect.left, y = t.clientY - rect.top;
+  touchStartX = x; touchStartY = y;
+  const s = size / N;
+  const c = Math.floor(x / s), r = Math.floor(y / s);
+  touchStartTile = rcToIndex(r,c);
+  touchActive = true;
+}, {passive:false});
+
+canvas.addEventListener('touchmove', (ev)=>{ ev.preventDefault(); }, {passive:false});
+
+canvas.addEventListener('touchend', (ev)=>{
+  if(!touchActive) return;
+  touchActive = false;
+  const rect = canvas.getBoundingClientRect();
+  // changedTouches may be empty on touchend; use changedTouches if available else last touch
+  const t = (ev.changedTouches && ev.changedTouches[0]) || ev.touches[0];
+  if(!t) return;
+  const x = t.clientX - rect.left, y = t.clientY - rect.top;
+  const dx = x - touchStartX, dy = y - touchStartY;
+  const thresh = Math.max(18, size/60); // minimum swipe
+  const absX = Math.abs(dx), absY = Math.abs(dy);
+
+  // If a short tap (no meaningful move) — treat as click/tap
+  if(Math.max(absX,absY) < thresh){
+    // simple tap
+    if(touchStartTile != null) moveTile(touchStartTile);
+    return;
+  }
+
+  // Determine swipe direction
+  let dir = null;
+  if(absX > absY){
+    dir = dx > 0 ? 'right' : 'left';
+  } else {
+    dir = dy > 0 ? 'down' : 'up';
+  }
+
+  // We interpret the swipe relative to the touched tile:
+  // If the tile can move in the swipe direction into blank, then move it.
+  // e.g., swipe left on a tile tries to move that tile left (if blank is left of it).
+  const ts = touchStartTile;
+  if(ts == null) return;
+  const {r,c} = indexToRC(ts);
+  let targetIdx = null;
+  if(dir==='left' && c>0) targetIdx = rcToIndex(r, c-1);
+  if(dir==='right' && c<N-1) targetIdx = rcToIndex(r, c+1);
+  if(dir==='up' && r>0) targetIdx = rcToIndex(r-1, c);
+  if(dir==='down' && r<N-1) targetIdx = rcToIndex(r+1, c);
+
+  // we only move if targetIdx is the blank (tile moved into blank)
+  if(targetIdx !== null && targetIdx === blank){
+    moveTile(ts);
+  } else {
+    // if swipe didn't target blank but is along same row/col and blank is reachable by sliding along that axis,
+    // try moving step-by-step toward blank if contiguous (optional nicety)
+    // we'll attempt to slide tiles between touched tile and blank if they are in same row or same column and blank lies in swipe direction
+    const {r:br,c:bc} = indexToRC(blank);
+    if(r === br && ((dir==='left' && bc < c) || (dir==='right' && bc > c))){
+      // move tiles one step toward blank until touched tile meets blank
+      const step = dir==='left'? -1 : 1;
+      let cur = rcToIndex(r, c - step); // neighbor toward blank
+      // perform single move if adjacent; else no
+      if(cur === blank){
+        moveTile(rcToIndex(r,c));
+      }
+    } else if(c === bc && ((dir==='up' && br < r) || (dir==='down' && br > r))){
+      const step = dir==='up'? -1 : 1;
+      if(rcToIndex(r - step, c) === blank){
+        moveTile(rcToIndex(r,c));
+      }
+    }
+  }
+});
+
+// Prevent double-tap zoom/interaction issues
+document.addEventListener('dblclick', e=>e.preventDefault(), { passive:false });
+
+// Fit canvas when board changes
+new ResizeObserver(fitCanvas).observe(document.getElementById('board'));
+
+// initial setup
+function initBoard(){
+  buildSolved();
+  draw();
+  renderHUD();
+}
+initBoard();
+
+// expose shuffle on load so user can press shuffle
+// (already wired to button)
+</script>
+</body>
+</html>
