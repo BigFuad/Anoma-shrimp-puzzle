@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #ff4e50, #f9d423);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: #fff;
+    }
+
+    .controls {
+      margin: 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button, select {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button {
+      background: #fff;
+      color: #ff4e50;
+      font-weight: bold;
+      transition: transform 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    select {
+      background: #fff;
+      color: #333;
+    }
+
+    #puzzle {
+      display: grid;
+      background: #222;
+      border: 5px solid #fff;
+      touch-action: none;
+    }
+
+    .tile {
+      background-size: cover;
+      background-position: center;
+      border: 1px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: transparent; /* hide numbers */
+      user-select: none;
+    }
+
+    .empty {
+      background: #111;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <label for="difficulty">Difficulty:</label>
+    <select id="difficulty">
+      <option value="3">Easy (3x3)</option>
+      <option value="4">Medium (4x4)</option>
+      <option value="5">Hard (5x5)</option>
+    </select>
+    <button onclick="initPuzzle()">Restart</button>
+  </div>
+
+  <div id="puzzle"></div>
+
+  <!-- Sound effect -->
+  <audio id="move-sound" src="sound.mp3" preload="auto"></audio>
+
+  <script>
+    const puzzle = document.getElementById("puzzle");
+    const difficultySelect = document.getElementById("difficulty");
+    let size = parseInt(difficultySelect.value);
+    let tiles = [];
+    let emptyTile;
+    let imageSrc = "Screenshot 2025-08-25 114226.png";
+
+    // initialize puzzle
+    function initPuzzle() {
+      size = parseInt(difficultySelect.value);
+      puzzle.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+      puzzle.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+      puzzle.style.width = "90vmin";
+      puzzle.style.height = "90vmin";
+      puzzle.innerHTML = "";
+
+      tiles = [];
+      for (let i = 0; i < size * size; i++) {
+        const tile = document.createElement("div");
+        tile.classList.add("tile");
+
+        if (i < size * size - 1) {
+          const x = i % size;
+          const y = Math.floor(i / size);
+          tile.style.backgroundImage = `url(${imageSrc})`;
+          tile.style.backgroundSize = `${size * 100}% ${size * 100}%`;
+          tile.style.backgroundPosition = `${(100 / (size - 1)) * x}% ${(100 / (size - 1)) * y}%`;
+          tile.dataset.index = i;
+        } else {
+          tile.classList.add("empty");
+          emptyTile = tile;
+        }
+
+        puzzle.appendChild(tile);
+        tiles.push(tile);
+      }
+
+      shuffle();
+      enableSwipe();
+    }
+
+    // shuffle tiles randomly but solvable
+    function shuffle() {
+      let moves = size * size * 10;
+      let directions = ["up", "down", "left", "right"];
+      for (let i = 0; i < moves; i++) {
+        let dir = directions[Math.floor(Math.random() * 4)];
+        moveEmpty(dir);
+      }
+    }
+
+    function moveEmpty(direction) {
+      let index = tiles.indexOf(emptyTile);
+      let x = index % size;
+      let y = Math.floor(index / size);
+      let targetIndex;
+
+      if (direction === "up" && y < size - 1) targetIndex = index + size;
+      if (direction === "down" && y > 0) targetIndex = index - size;
+      if (direction === "left" && x < size - 1) targetIndex = index + 1;
+      if (direction === "right" && x > 0) targetIndex = index - 1;
+
+      if (targetIndex !== undefined) {
+        swap(index, targetIndex);
+      }
+    }
+
+    function swap(i, j) {
+      puzzle.insertBefore(tiles[j], tiles[i]);
+      puzzle.insertBefore(tiles[i], tiles[j]);
+      [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+
+      playSound();
+    }
+
+    // sound effect
+    function playSound() {
+      const sound = document.getElementById("move-sound");
+      sound.currentTime = 0;
+      sound.play().catch(err => console.log("Sound blocked until user interacts"));
+    }
+
+    // swipe controls for mobile
+    function enableSwipe() {
+      let startX, startY;
+      puzzle.addEventListener("touchstart", e => {
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+      });
+
+      puzzle.addEventListener("touchend", e => {
+        const touch = e.changedTouches[0];
+        let dx = touch.clientX - startX;
+        let dy = touch.clientY - startY;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 30) moveEmpty("left");
+          else if (dx < -30) moveEmpty("right");
+        } else {
+          if (dy > 30) moveEmpty("up");
+          else if (dy < -30) moveEmpty("down");
+        }
+      });
+    }
+
+    // start puzzle
+    initPuzzle();
+  </script>
+</body>
+</html>
